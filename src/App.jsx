@@ -1,13 +1,24 @@
+import { useAuth } from "./providers/AuthProvider";
+
 function App() {
+  const { user, signInWithGoogle, logOut } = useAuth();
   return (
-    <>
-      <div className="text-3xl font-bold text-center text-blue-500">
-        Tailwind CSS is Working!
-      </div>
-      <div className="flex justify-center items-center h-screen">
-        <button className="btn btn-primary">DaisyUI Button</button>
-      </div>
-    </>
+    <div className="flex flex-col items-center justify-center h-screen space-y-4">
+      {user ? (
+        <>
+          <h1 className="text-2xl font-bold text-green-500">
+            Welcome, {user.displayName} !
+          </h1>
+          <button onClick={logOut} className="btn btn-error">
+            Logout
+          </button>
+        </>
+      ) : (
+        <button onClick={signInWithGoogle} className="btn btn-primary">
+          Sign in with Google
+        </button>
+      )}
+    </div>
   );
 }
 
