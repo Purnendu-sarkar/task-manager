@@ -1,42 +1,56 @@
-/* eslint-disable react/prop-types */
 import { createContext, useContext, useEffect, useState } from "react";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-} from "firebase/auth";
-import { app } from "../firebase.config";
+import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebase.config";
 
-const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 const AuthContext = createContext();
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+  const signInWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const token = await user.getIdToken();
+
+      // ✅ User info sent to backend
+      await fetch("http://localhost:5000/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+        }),
+      });
+
+      setUser(user);
+    } catch (error) {
+      console.error("Login Error:", error.message);
+    }
+  };
+
   const logOut = () => signOut(auth);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const authInfo = {
-    user,
-    signInWithGoogle,
-    logOut,
-  };
-
   return (
-    <AuthContext.Provider value={authInfo}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, signInWithGoogle, logOut, loading }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
 export default AuthProvider;
-
 export const useAuth = () => useContext(AuthContext);
